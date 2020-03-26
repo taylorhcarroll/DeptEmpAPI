@@ -8,6 +8,7 @@ using System.Data;
 using Microsoft.Data.SqlClient;
 using DepartmentsEmployeesAPI.Models;
 using Microsoft.AspNetCore.Http;
+using DepartmentsEmployeesAPI.Data;
 
 namespace DeptandEmployeesAPI.Controllers
 {
@@ -16,10 +17,12 @@ namespace DeptandEmployeesAPI.Controllers
     public class DepartmentController : ControllerBase
     {
         private readonly IConfiguration _config;
+        private readonly DepartmentRepository _repo;
 
         public DepartmentController(IConfiguration config)
         {
             _config = config;
+            _repo = new DepartmentRepository();
         }
 
         public SqlConnection Connection
@@ -31,37 +34,51 @@ namespace DeptandEmployeesAPI.Controllers
         }
 
 
+        //// Get all departments from the database
+        //[HttpGet]
+        //public async Task<IActionResult> Get()
+        //{
+        //    using (SqlConnection conn = Connection)
+        //    {
+        //        conn.Open();
+        //        using (SqlCommand cmd = conn.CreateCommand())
+        //        {
+        //            cmd.CommandText = @"SELECT d.Id, d.DeptName, e.FirstName, e.LastName, e.DepartmentId, e.Id as EmployeeId
+        //                                FROM Department d
+        //                                LEFT JOIN Employee e on d.id = e.DepartmentId";
+        //            SqlDataReader reader = cmd.ExecuteReader();
+        //            List<Department> departments = new List<Department>();
+
+        //            while (reader.Read())
+        //            {
+        //                Department department = new Department
+        //                {
+        //                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+        //                    DeptName = reader.GetString(reader.GetOrdinal("DeptName")),
+        //                    Employees = new List<Employee>()
+        //                };
+
+        //                departments.Add(department);
+        //            }
+        //            reader.Close();
+
+        //            return Ok(departments);
+        //        }
+        //    }
+        //}
+
         // Get all departments from the database
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            using (SqlConnection conn = Connection)
-            {
-                conn.Open();
-                using (SqlCommand cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = @"SELECT d.Id, d.DeptName, e.FirstName, e.LastName, e.DepartmentId, e.Id as EmployeeId
-                                        FROM Department d
-                                        LEFT JOIN Employee e on d.id = e.DepartmentId";
-                    SqlDataReader reader = cmd.ExecuteReader();
-                    List<Department> departments = new List<Department>();
+            var departments = _repo.GetAllDepartments(); 
+            return Ok(departments);
+        }
 
-                    while (reader.Read())
-                    {
-                        Department department = new Department
-                        {
-                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                            DeptName = reader.GetString(reader.GetOrdinal("DeptName")),
-                            Employees = new List<Employee>()
-                        };
-
-                        departments.Add(department);
-                    }
-                    reader.Close();
-
-                    return Ok(departments);
-                }
-            }
+        [HttpGet("{id}", Name = "GetDepartment")]
+        public async Task<IActionResult> Get([FromRoute] int id)
+        {
+            var department = _repo.GetDepartmentById()
         }
 
 
@@ -109,6 +126,39 @@ namespace DeptandEmployeesAPI.Controllers
             }
         }
 
+        //post new Department
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] Department department)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"INSERT INTO Department (DeptName)
+                                      OUTPUT INSERTED.Id
+                                      VALUES (@departmentName)";
+                    cmd.Parameters.Add(new SqlParameter("@departmentName", department.DeptName));
+                    int newId = (int)cmd.ExecuteScalar();
+                    department.Id = newId;
+                    return CreatedAtRoute("GetDepartment", new { id = newId }, department);
+                }
+            }
+        }
+
+        //PUT or UPDATE a department
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] Department department)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using()
+                }
+            }
+        }
 
 
 
