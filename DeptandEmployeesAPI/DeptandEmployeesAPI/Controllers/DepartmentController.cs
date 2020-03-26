@@ -78,53 +78,61 @@ namespace DeptandEmployeesAPI.Controllers
         [HttpGet("{id}", Name = "GetDepartment")]
         public async Task<IActionResult> Get([FromRoute] int id)
         {
-            var department = _repo.GetDepartmentById()
-        }
-
-
-        // Get a single department from Id
-        [HttpGet("{id}", Name = "GetDepartment")]
-        public async Task<IActionResult> Get([FromRoute] int id)
-        {
-            using (SqlConnection conn = Connection)
-            {
-                conn.Open();
-                using (SqlCommand cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = @"
-                     SELECT e.FirstName, e.LastName, e.Id as EmployeeId, d.DeptName, d.Id
-                     FROM Department d
-                     LEFT JOIN Employee e on d.Id = e.DepartmentId
-                     WHERE d.id = @id";
-                    cmd.Parameters.Add(new SqlParameter("@id", id));
-                    SqlDataReader reader = cmd.ExecuteReader();
-
-                    Department department = null;
-
-                    if (reader.Read())
-                    {
-                        department = new Department
-                        {
-                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                            DeptName = reader.GetString(reader.GetOrdinal("DeptName"))
-                        };
-                        department.Employees.Add(new Employee()
-                        {
-                            FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
-                            LastName = reader.GetString(reader.GetOrdinal("LastName")),
-                            Id = reader.GetInt32(reader.GetOrdinal("EmployeeId")),
-                        });
-                        reader.Close();
-
-                        return Ok(department);
-                    }
-                    else
-                    {
-                        return NotFound();
-                    }
-                }
+            var department = _repo.GetDepartmentById(id);
+            if (department == null) {
+                return NotFound();
             }
+            else
+            {
+                return Ok(department);
+            }
+
         }
+
+
+        //// Get a single department from Id
+        //[HttpGet("{id}", Name = "GetDepartment")]
+        //public async Task<IActionResult> Get([FromRoute] int id)
+        //{
+        //    using (SqlConnection conn = Connection)
+        //    {
+        //        conn.Open();
+        //        using (SqlCommand cmd = conn.CreateCommand())
+        //        {
+        //            cmd.CommandText = @"
+        //             SELECT e.FirstName, e.LastName, e.Id as EmployeeId, d.DeptName, d.Id
+        //             FROM Department d
+        //             LEFT JOIN Employee e on d.Id = e.DepartmentId
+        //             WHERE d.id = @id";
+        //            cmd.Parameters.Add(new SqlParameter("@id", id));
+        //            SqlDataReader reader = cmd.ExecuteReader();
+
+        //            Department department = null;
+
+        //            if (reader.Read())
+        //            {
+        //                department = new Department
+        //                {
+        //                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+        //                    DeptName = reader.GetString(reader.GetOrdinal("DeptName"))
+        //                };
+        //                department.Employees.Add(new Employee()
+        //                {
+        //                    FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+        //                    LastName = reader.GetString(reader.GetOrdinal("LastName")),
+        //                    Id = reader.GetInt32(reader.GetOrdinal("EmployeeId")),
+        //                });
+        //                reader.Close();
+
+        //                return Ok(department);
+        //            }
+        //            else
+        //            {
+        //                return NotFound();
+        //            }
+        //        }
+        //    }
+        //}
 
         //post new Department
         [HttpPost]
@@ -147,6 +155,15 @@ namespace DeptandEmployeesAPI.Controllers
         }
 
         //PUT or UPDATE a department
+        //[HttpPut("{id}")]
+        //public async Task<IActionResult> Put([FromRoute] int id, [FromBody] Department department)
+        //{
+        //    try
+        //    {
+        //        var department = _repo.UpdateDepartment(id);
+        //    }
+        //}
+
         [HttpPut("{id}")]
         public async Task<IActionResult> Put([FromRoute] int id, [FromBody] Department department)
         {
@@ -155,13 +172,70 @@ namespace DeptandEmployeesAPI.Controllers
                 using (SqlConnection conn = Connection)
                 {
                     conn.Open();
-                    using()
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"UPDATE Department
+                                            SET DeptName = @deptName, 
+                                            WHERE Id = @id";
+                        cmd.Parameters.Add(new SqlParameter("@deptName", department.DeptName));
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!DepartmentExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
                 }
             }
         }
 
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete([FromRoute] int id)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"DELETE FROM Department WHERE Id = @id";
+                        cmd.Parameters.Add(new SqlParameter("@id", id));
 
-
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            return new StatusCodeResult(StatusCodes.Status204NoContent);
+                        }
+                        throw new Exception("No rows affected");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                if (!DepartmentExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
         private bool DepartmentExists(int id)
         {
             using (SqlConnection conn = Connection)
